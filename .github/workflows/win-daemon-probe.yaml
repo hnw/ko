@@ -56,22 +56,21 @@ jobs:
         set -o pipefail
         set -x
 
-        echo "=== docker version ==="
-        docker version 2>&1 || echo "docker version failed"
+        echo "=== docker info ==="
+        docker info 2>&1 | grep -iE 'OSType|Storage Driver|Snapshotter|Server Version|Operating System' || echo "docker info grep failed"
 
-        echo "=== info: OSType / containerd snapshotter ==="
-        docker info 2>&1 | grep -iE 'OSType|Storage Driver|Snapshotter|Server Version|Operating System|containerd' || echo "docker info grep failed"
-
-        echo "=== can we load ANY image? (nanoserver pull) ==="
-        docker pull mcr.microsoft.com/windows/nanoserver:ltsc2022 2>&1 | tail -5
-        docker images
-
-        echo "=== try docker load of a tarball ko produced ==="
+        echo "=== docker load of a ko tarball (docker/save media type) ==="
         rm -f probe.tar
-        KO_DEFAULTBASEIMAGE=mcr.microsoft.com/windows/nanoserver:ltsc2022 \
+        KO_DOCKER_REPO="" KO_DEFAULTBASEIMAGE=mcr.microsoft.com/windows/nanoserver:ltsc2022 \
           ./ko.exe build ./ --platform=windows/amd64:10.0.20348 \
-          --push=false --bare --tarball=probe.tar 2>&1 | tail -5
-        ls -l probe.tar || echo "no tarball"
-        docker load -i probe.tar 2>&1 | tail -5
-        echo "=== after load ==="
-        docker images
+          --push=false --tarball=probe.tar 2>&1 | tail -3
+        ls -l probe.tar || echo "NO TARBALL PRODUCED"
+        echo "=== manifest.json inside tarball ==="
+        tar xf probe.tar manifest.json -O 2>&1 || echo "no manifest.json"
+        echo "=== docker load -i probe.tar (full output) ==="
+        docker load -i probe.tar 2>&1 | tail -10
+        echo "rc=$?"
+        echo "=== docker images -a (incl. dangling) ==="
+        docker images -a 2>&1
+        echo "=== docker image ls --all --no-trunc ==="
+        docker image ls --all --no-trunc 2>&1 | head -10
