@@ -25,7 +25,6 @@ import (
 	"time"
 
 	ecr "github.com/awslabs/amazon-ecr-credential-helper/ecr-login"
-	"github.com/chrismellard/docker-credential-acr-env/pkg/credhelper"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/authn/github"
 	"github.com/google/go-containerregistry/pkg/name"
@@ -37,6 +36,11 @@ import (
 	"github.com/google/ko/pkg/build"
 	"github.com/google/ko/pkg/commands/options"
 	"github.com/google/ko/pkg/publish"
+
+	// osscontainertools/docker-credential-acr is the maintained fork of
+	// chrismellard/docker-credential-acr-env, which anchors the ACR hostname
+	// pattern (GO-2026-6225, CVSS 9.3). The API is identical.
+	"github.com/osscontainertools/docker-credential-acr/pkg/credhelper"
 )
 
 var (
