@@ -1,0 +1,55 @@
+name: Scratch base probe
+
+on:
+  pull_request:
+    branches:
+      - 'main'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  probe:
+    name: scratch probe ${{ matrix.platform }}
+    runs-on: ${{ matrix.platform }}
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+        - ubuntu-latest
+        - windows-latest
+
+    permissions:
+      contents: read
+
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+
+    - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      with:
+        go-version: 'stable'
+
+    - name: Build and run test binary from scratch base image
+      env:
+        KO_DOCKER_REPO: ko.local
+      shell: bash
+      run: |
+        set -o errexit
+        set -o nounset
+        set -o pipefail
+        set -x
+
+        export PLATFORM=$(go env GOOS)/$(go env GOARCH)
+
+        if [[ "${{ matrix.platform }}" == "windows-latest" ]]; then
+          OSVERSION="10.0.20348"
+          PLATFORM=${PLATFORM}:${OSVERSION}
+        fi
+
+        echo platform is ${PLATFORM}
+
+        testimg=$(KO_DEFAULTBASEIMAGE=scratch go run ./ build ./test --platform=${PLATFORM} --preserve-import-paths)
+        echo built ${testimg}
+        docker run ${testimg} --no-tz --wait=false
