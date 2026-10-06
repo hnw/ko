@@ -32,8 +32,6 @@ jobs:
         go-version: 'stable'
 
     - name: Build and run test binary from scratch base image
-      env:
-        KO_DOCKER_REPO: ko.local
       shell: bash
       run: |
         set -o errexit
@@ -50,6 +48,12 @@ jobs:
 
         echo platform is ${PLATFORM}
 
-        testimg=$(KO_DEFAULTBASEIMAGE=scratch go run ./ build ./test --platform=${PLATFORM} --preserve-import-paths)
-        echo built ${testimg}
-        docker run ${testimg} --no-tz --wait=false
+        # Build a tarball instead of pushing to ko.local: the ko.local tagging
+        # step is broken on windows-latest independently of this PR.
+        KO_DEFAULTBASEIMAGE=scratch go run ./ build ./test \
+          --platform=${PLATFORM} --preserve-import-paths \
+          -t scratch-probe --push=false > scratch-probe.tar
+        ls -l scratch-probe.tar
+        docker load -i scratch-probe.tar
+        docker image inspect scratch-probe
+        docker run scratch-probe --no-tz --wait=false
