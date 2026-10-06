@@ -25,7 +25,6 @@ import (
 	"time"
 
 	ecr "github.com/awslabs/amazon-ecr-credential-helper/ecr-login"
-	"github.com/chrismellard/docker-credential-acr-env/pkg/credhelper"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/authn/github"
 	"github.com/google/go-containerregistry/pkg/name"
@@ -37,6 +36,11 @@ import (
 	"github.com/google/ko/pkg/build"
 	"github.com/google/ko/pkg/commands/options"
 	"github.com/google/ko/pkg/publish"
+
+	// osscontainertools/docker-credential-acr is the maintained fork of
+	// chrismellard/docker-credential-acr-env, which anchors the ACR hostname
+	// pattern (GO-2026-6225, CVSS 9.3). The API is identical.
+	"github.com/osscontainertools/docker-credential-acr/pkg/credhelper"
 )
 
 var (
@@ -99,6 +103,7 @@ func getBaseImage(bo *options.BuildOptions) build.GetBase {
 		if !ok || baseImage == "" {
 			baseImage = bo.BaseImage
 		}
+
 		var nameOpts []name.Option
 		if bo.InsecureRegistry {
 			nameOpts = append(nameOpts, name.Insecure)
@@ -106,6 +111,15 @@ func getBaseImage(bo *options.BuildOptions) build.GetBase {
 		ref, err := name.ParseReference(baseImage, nameOpts...)
 		if err != nil {
 			return nil, nil, fmt.Errorf("parsing base image (%q): %w", baseImage, err)
+		}
+
+		if baseImage == "scratch" {
+			log.Printf("Using base %s for %s", ref, s)
+			si, err := build.ScratchImage(bo.Platforms)
+			if err != nil {
+				return nil, nil, fmt.Errorf("constructing scratch image: %w", err)
+			}
+			return ref, si, nil
 		}
 
 		var result build.Result
