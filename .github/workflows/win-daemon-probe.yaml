@@ -1,0 +1,50 @@
+name: Windows daemon probe
+
+on:
+  pull_request:
+    branches:
+      - 'main'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  probe:
+    name: win daemon probe
+    runs-on: windows-latest
+
+    permissions:
+      contents: read
+
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+
+    - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      with:
+        go-version: 'stable'
+
+    - name: Probe docker load / tag behaviour on Windows
+      shell: bash
+      run: |
+        set -o errexit
+        set -o nounset
+        set -o pipefail
+        set -x
+
+        export PLATFORM=$(go env GOOS)/$(go env GOARCH):10.0.20348
+        echo platform is ${PLATFORM}
+
+        go build -o ko.exe ./
+
+        # Reproduce the failing step with tracing on.
+        KO_DOCKER_REPO=ko.local ./ko.exe build ./ --platform=${PLATFORM} --preserve-import-paths || echo "STEP1 FAILED rc=$?"
+
+        # Inspect what actually landed in the daemon.
+        echo "--- docker images ---"
+        docker images
+        echo "--- image inspect by ko.local ref ---"
+        docker image inspect ko.local/github.com/google/ko 2>&1 || echo "inspect by ref failed"
+        echo "--- what go-containerregistry daemon.Write returns ---"
+        ./ko.exe version || echo "version step failed"
