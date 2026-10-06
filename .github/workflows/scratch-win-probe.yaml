@@ -52,7 +52,7 @@ jobs:
         # step is broken on windows-latest independently of this PR.
         KO_DEFAULTBASEIMAGE=scratch go run ./ build ./test \
           --platform=${PLATFORM} --preserve-import-paths \
-          -t scratch-probe --push=false > scratch-probe.tar
+          -t scratch-probe --push=false --tarball=scratch-probe.tar
         ls -l scratch-probe.tar
         docker load -i scratch-probe.tar
         docker image inspect scratch-probe
