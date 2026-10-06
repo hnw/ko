@@ -48,3 +48,30 @@ jobs:
         docker image inspect ko.local/github.com/google/ko 2>&1 || echo "inspect by ref failed"
         echo "--- what go-containerregistry daemon.Write returns ---"
         ./ko.exe version || echo "version step failed"
+
+    - name: Isolate docker load behaviour on Windows
+      shell: bash
+      run: |
+        set -o nounset
+        set -o pipefail
+        set -x
+
+        echo "=== docker version ==="
+        docker version 2>&1 || echo "docker version failed"
+
+        echo "=== info: OSType / containerd snapshotter ==="
+        docker info 2>&1 | grep -iE 'OSType|Storage Driver|Snapshotter|Server Version|Operating System|containerd' || echo "docker info grep failed"
+
+        echo "=== can we load ANY image? (nanoserver pull) ==="
+        docker pull mcr.microsoft.com/windows/nanoserver:ltsc2022 2>&1 | tail -5
+        docker images
+
+        echo "=== try docker load of a tarball ko produced ==="
+        rm -f probe.tar
+        KO_DEFAULTBASEIMAGE=mcr.microsoft.com/windows/nanoserver:ltsc2022 \
+          ./ko.exe build ./ --platform=windows/amd64:10.0.20348 \
+          --push=false --bare --tarball=probe.tar 2>&1 | tail -5
+        ls -l probe.tar || echo "no tarball"
+        docker load -i probe.tar 2>&1 | tail -5
+        echo "=== after load ==="
+        docker images
